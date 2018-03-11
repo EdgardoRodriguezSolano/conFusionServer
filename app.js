@@ -4,6 +4,8 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 
 var index = require('./routes/index');
 var users = require('./routes/users');
@@ -33,16 +35,23 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+// app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser('12345-67890-09876-54321'));
+// app.use(cookieParser('12345-67890-09876-54321'));
+app.use(session({
+	name: 'session-id',
+	secret: '12345-67890-09876-54321',
+	saveUninitialized: false,
+	resave: false,
+	store: new FileStore()
+}));
 
 function auth(req,res, next) {
-	console.log(req.signedCookies);
+	console.log(req.session);
 
-	if (!req.signedCookies.user) { // the user has not been authorized yet
+	if (!req.session.user) { // the user has not been authorized yet
 			var authHeader = req.headers.authorization;
 
 				if (!authHeader) {
@@ -56,7 +65,7 @@ function auth(req,res, next) {
 				var username = auth[0];
 				var password = auth[1];
 				if (username === 'admin' && password === 'password'){
-					res.cookie('user','admin',{signed: true});
+					req.session.user = 'admin';
 					next();
 				}else{
 					var err = new Error('You are not authenticated!');
@@ -66,7 +75,7 @@ function auth(req,res, next) {
 				}
 	}else //signed user already exists
 	{
-		if (req.signedCookies.user == 'admin') {
+		if (req.session.user == 'admin') {
 				next();
 		}else{
 					var err = new Error('You are not authenticated!');
